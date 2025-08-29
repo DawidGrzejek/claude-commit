@@ -1,0 +1,116 @@
+{
+  "name": "claude-commit",
+  "displayName": "Claude Commit",
+  "description": "Generate smart commit messages with Claude CLI",
+  "version": "1.0.0",
+  "publisher": "juanlb",
+  "author": {
+    "name": "JLB"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/juanlb/claude-commit#readme",
+  "bugs": {
+    "url": "https://github.com/juanlb/claude-commit/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/juanlb/claude-commit"
+  },
+  "keywords": [
+    "git",
+    "commit",
+    "ai",
+    "claude",
+    "anthropic",
+    "commit-message",
+    "automation"
+  ],
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other",
+    "Machine Learning"
+  ],
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "icon": "icon.png",
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "claude-commit.createCommitMessage",
+        "title": "Create Commit Message",
+        "icon": "$(sparkle)"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "claude-commit.createCommitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ],
+      "scm/resourceGroup/inline": [
+        {
+          "command": "claude-commit.createCommitMessage",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Claude Commit",
+      "properties": {
+        "claude-commit.claudePath": {
+          "type": "string",
+          "default": "",
+          "description": "Custom path to Claude CLI executable (optional - auto-detects by default)"
+        },
+        "claude-commit.debugMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug mode to show CLI commands being executed"
+        },
+        "claude-commit.customRules": {
+          "type": "array",
+          "default": [],
+          "description": "Custom rules for commit message generation (e.g., 'Always include ticket number', 'Use present tense')",
+          "items": {
+            "type": "string"
+          }
+        },
+        "claude-commit.additionalCliArgs": {
+          "type": "array",
+          "default": [],
+          "description": "Additional command-line arguments to pass to Claude CLI",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.102.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.32.0",
+    "typescript": "^5.9.2"
+  }
+}
