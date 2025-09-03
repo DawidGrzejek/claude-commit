@@ -253,11 +253,10 @@ class ClaudeCLIExecutor {
         throw new Error('Claude CLI not found. Please ensure Claude Code is installed and available in your PATH. You can also set a custom path in the extension settings.');
     }
 
-    async executeCommand(prompt: string, additionalArgs?: string[]): Promise<string> {
+    async executeCommand(prompt: string): Promise<string> {
         if (this.debugMode) {
             outputChannel.appendLine('\n=== EXECUTE COMMAND START ===');
             outputChannel.appendLine(`claudePath: ${this.claudePath}`);
-            outputChannel.appendLine(`additionalArgs: ${additionalArgs?.join(' ') || 'none'}`);
             outputChannel.appendLine(`prompt length: ${prompt?.length} chars`);
         }
         
@@ -291,10 +290,6 @@ class ClaudeCLIExecutor {
         command += ' --model sonnet';  // Hardcoded model
         command += ' --output-format json';
         command += ' --dangerously-skip-permissions';  // Skip permissions check
-
-        if (additionalArgs) {
-            command += ' ' + additionalArgs.join(' ');
-        }
 
         if (this.debugMode) {
             outputChannel.appendLine(`\n[EXECUTE] Command structure: echo [base64] | base64 -d | claude [options]`);
@@ -568,8 +563,6 @@ class CommitMessageGenerator {
             outputChannel.appendLine('\n=== CONFIGURATION ===');
             outputChannel.appendLine(`claudePath: ${this.config.get<string>('claudePath') || 'not set'}`);
             outputChannel.appendLine(`debugMode: ${this.debugMode}`);
-            outputChannel.appendLine(`customRules: ${this.config.get<string[]>('customRules')?.length || 0} rules`);
-            outputChannel.appendLine(`additionalCliArgs: ${this.config.get<string[]>('additionalCliArgs')?.join(' ') || 'none'}`);
         }
         
         this.cliExecutor = new ClaudeCLIExecutor(this.debugMode);
@@ -583,14 +576,10 @@ class CommitMessageGenerator {
         
         try {
             // Get configuration
-            const customRules = this.config.get<string[]>('customRules') || [];
             const claudePath = this.config.get<string>('claudePath');
-            const additionalCliArgs = this.config.get<string[]>('additionalCliArgs');
             
             if (this.debugMode) {
                 outputChannel.appendLine(`[CONFIG] claudePath: ${claudePath || 'auto-detect'}`);
-                outputChannel.appendLine(`[CONFIG] customRules: ${customRules.length} rules`);
-                outputChannel.appendLine(`[CONFIG] additionalCliArgs: ${additionalCliArgs?.join(' ') || 'none'}`);
             }
 
             // Initialize CLI with custom path if provided
@@ -650,10 +639,6 @@ class CommitMessageGenerator {
             }
             
             // Build prompt with hardcoded conventional format
-            const customRulesText = customRules.length > 0 
-                ? `\n\nAdditional custom rules:\n${customRules.map(rule => `- ${rule}`).join('\n')}` 
-                : '';
-            
             const prompt = `Generate a git commit message for the following changes. 
 
 IMPORTANT: Return ONLY the commit message text itself. Do not include:
@@ -671,7 +656,7 @@ Rules:
 - Use conventional commit format
 - Keep under 72 characters for the first line
 - Be specific and clear
-- Common types: feat, fix, docs, style, refactor, test, chore${customRulesText}
+- Common types: feat, fix, docs, style, refactor, test, chore
 
 Remember: Return ONLY the commit message text, nothing else.`;
 
@@ -685,7 +670,7 @@ Remember: Return ONLY the commit message text, nothing else.`;
                 outputChannel.appendLine('\n[CLAUDE] Executing Claude CLI...');
             }
             
-            const output = await this.cliExecutor.executeCommand(prompt, additionalCliArgs);
+            const output = await this.cliExecutor.executeCommand(prompt);
             
             if (this.debugMode) {
                 outputChannel.appendLine(`[CLAUDE] Response received: ${output?.length || 0} chars`);

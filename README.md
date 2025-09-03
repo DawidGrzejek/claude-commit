@@ -1,23 +1,29 @@
 # Claude Commit
 
-A VS Code extension that adds an AI-powered sparkle button ✨ to your Git panel for generating intelligent commit messages using Claude CLI.
+**Already using Claude Code? Get the commit message button you deserve – at no extra cost.**
+
+A VS Code extension that brings the ✨ sparkle button to your Git panel, powered by the Claude CLI you already have. Generate intelligent commit messages without paying for additional AI services.
 
 ![Sparkle button in Git panel](screenshots/sparkle-button-demo.png)
 
+## Why Claude Commit?
+
+You're already investing in Claude Code – whether it's Pro, Max ×5, or Max ×10. Why pay for Copilot or Cursor just for commit message generation? This extension leverages your existing Claude subscription to bring the same AI-powered commit message functionality directly to VS Code.
+
+**Zero additional cost. Zero complexity. Just works.**
+
 ## Features
 
-- **One-click commit message generation**: Add a sparkle button directly in VS Code's Git panel
-- **Powered by Claude CLI**: Uses your local Claude installation to analyze changes and generate meaningful commit messages
-- **Claude Code Max Compatible**: Works seamlessly with your Claude Code Max account
-- **Context-aware**: Analyzes your git diff to understand what changes were made
-- **Smart formatting**: Generates properly formatted conventional commit messages
-- **Seamless integration**: Works directly with VS Code's built-in Git interface
-- **No API keys required**: Uses your existing Claude CLI authentication
+- **One-click commit message generation**: The sparkle button ✨ you know and love, right in VS Code's Git panel
+- **Powered by your Claude CLI**: Uses your existing Claude installation – no extra API keys or subscriptions
+- **Context-aware analysis**: Understands your git diff to generate meaningful, conventional commit messages
+- **Dead simple**: No configuration needed – install and go
+- **Seamless VS Code integration**: Works directly with the built-in Git interface
 
 ## Requirements
 
 - VS Code 1.103.0 or higher
-- Claude CLI installed and authenticated (via Claude Code Max or other methods)
+- Claude CLI installed and authenticated (comes with your Claude Code subscription)
 - Git repository initialized in your workspace
 - Internet connection for AI generation
 
@@ -30,21 +36,20 @@ A VS Code extension that adds an AI-powered sparkle button ✨ to your Git panel
 
 ## How to Use
 
-1. Make some changes to your code
-2. Stage your changes in VS Code's Git panel (optional - works with unstaged changes too)
+1. Make your code changes
+2. Stage your changes (optional – works with unstaged changes too)
 3. Click the sparkle ✨ button next to the commit message input
-4. The extension will analyze your changes using Claude CLI and generate a commit message
-5. Review and edit the generated message if needed
-6. Commit your changes
+4. Review the AI-generated commit message
+5. Commit
+
+That's it. No configuration, no setup wizards, no complexity.
 
 ## Extension Settings
 
-This extension contributes the following settings:
+This extension keeps it simple with just two optional settings:
 
-* `claude-commit.claudePath`: Custom path to Claude CLI executable (optional - auto-detects by default)
-* `claude-commit.debugMode`: Enable debug mode to show CLI commands being executed
-* `claude-commit.customRules`: Custom rules for commit message generation (e.g., 'Always include ticket number', 'Use present tense')
-* `claude-commit.additionalCliArgs`: Additional command-line arguments to pass to Claude CLI
+* `claude-commit.claudePath`: Custom path to Claude CLI executable (auto-detects by default)
+* `claude-commit.debugMode`: Enable debug output for troubleshooting
 
 ## Configuration Examples
 
@@ -52,17 +57,6 @@ This extension contributes the following settings:
 ```json
 {
     "claude-commit.claudePath": "/usr/local/bin/claude"
-}
-```
-
-### Custom commit rules
-```json
-{
-    "claude-commit.customRules": [
-        "Always include JIRA ticket number",
-        "Use present tense",
-        "Keep under 50 characters"
-    ]
 }
 ```
 
@@ -76,9 +70,10 @@ This extension contributes the following settings:
 ## Troubleshooting
 
 ### Claude CLI not found
-If you see an error about Claude CLI not being found:
 
-1. **Check Claude is installed**: Run this in your terminal:
+If the extension can't find Claude CLI:
+
+1. **Check Claude is installed**: Run in terminal:
    ```bash
    which claude
    ```
@@ -88,21 +83,20 @@ If you see an error about Claude CLI not being found:
    - Open VS Code Settings (Cmd+,)
    - Search for "claude-commit"
    - In "Claude Path", enter the full path from step 1
-   - Example: `/Users/you/.nvm/versions/node/v22.13.0/bin/claude`
 
 3. **Enable Debug Mode**:
-   - In the same settings, enable "Debug Mode"
-   - Open the Output panel (View → Output)
-   - Select "Claude Commit" from the dropdown
-   - Try generating a commit message and check the logs
+   - Enable "Debug Mode" in settings
+   - Open Output panel (View → Output)
+   - Select "Claude Commit" from dropdown
+   - Try generating a commit message and check logs
 
 4. **Common issues**:
-   - **NVM users**: VS Code might not see your NVM paths. Use the custom path setting
+   - **NVM users**: VS Code might not see NVM paths – use the custom path setting
    - **macOS**: If using zsh, paths might differ between terminal and VS Code
    - **Authentication**: Ensure Claude CLI is authenticated by running `claude setup-token` in terminal
 
 ### No commit message generated
-1. Ensure you have changes in your repository (staged or unstaged)
+1. Ensure you have changes in your repository
 2. Check that Claude CLI is properly authenticated
 3. Enable debug mode to see the actual commands being executed
 
@@ -115,12 +109,15 @@ If you see an error about Claude CLI not being found:
 
 ## Release Notes
 
+### 1.0.1
+- Streamlined configuration – removed unnecessary options for dead-simple operation
+- Enhanced README to clarify value proposition for Claude Code users
+
 ### 1.0.0
 - Complete refactor to use Claude CLI instead of Anthropic API
-- Simplified configuration (removed model, maxTokens, commitFormat, customTemplate)
+- Simplified configuration
 - Hardcoded to use Sonnet model and conventional commit format
 - Improved debug logging that only runs when debug mode is enabled
-- Removed all console.log statements for cleaner operation
 - New name: Claude Commit (formerly Claude Code AI Commit Message Button)
 
 ## Contributing
@@ -131,4 +128,6 @@ Found a bug or have a feature request? Please open an issue on our [GitHub repos
 
 MIT License - see LICENSE file for details.
 
-**Enjoy smarter commits with Claude Code Max! ✨**
+---
+
+**Stop paying twice for AI commit messages. You've got Claude Code – now get the commit button. ✨**

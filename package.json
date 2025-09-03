@@ -2,7 +2,7 @@
   "name": "claude-commit",
   "displayName": "Claude Commit",
   "description": "Generate smart commit messages with Claude CLI",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "publisher": "juanlb",
   "author": {
     "name": "JLB"
@@ -74,22 +74,6 @@
           "type": "boolean",
           "default": false,
           "description": "Enable debug mode to show CLI commands being executed"
-        },
-        "claude-commit.customRules": {
-          "type": "array",
-          "default": [],
-          "description": "Custom rules for commit message generation (e.g., 'Always include ticket number', 'Use present tense')",
-          "items": {
-            "type": "string"
-          }
-        },
-        "claude-commit.additionalCliArgs": {
-          "type": "array",
-          "default": [],
-          "description": "Additional command-line arguments to pass to Claude CLI",
-          "items": {
-            "type": "string"
-          }
         }
       }
     }
