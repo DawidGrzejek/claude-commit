@@ -46,14 +46,17 @@ That's it. No configuration, no setup wizards, no complexity.
 
 ## Extension Settings
 
-This extension keeps it simple with just two optional settings:
+This extension provides several optional settings to customize your experience:
 
-* `claude-commit.claudePath`: Custom path to Claude CLI executable (auto-detects by default)
-* `claude-commit.debugMode`: Enable debug output for troubleshooting
+- `claude-commit.claudePath`: Custom path to Claude CLI executable (auto-detects by default)
+- `claude-commit.debugMode`: Enable debug output for troubleshooting
+- `claude-commit.customInstructions`: Custom instructions for commit message generation
+- `claude-commit.instructionsFilePath`: Path to a file containing custom commit message instructions
 
 ## Configuration Examples
 
 ### Using a custom Claude path
+
 ```json
 {
     "claude-commit.claudePath": "/usr/local/bin/claude"
@@ -61,11 +64,46 @@ This extension keeps it simple with just two optional settings:
 ```
 
 ### Debug mode for troubleshooting
+
 ```json
 {
     "claude-commit.debugMode": true
 }
 ```
+
+### Custom instructions (inline)
+
+Provide custom rules directly in your settings:
+
+```json
+{
+    "claude-commit.customInstructions": "Summarize changes into a single sentence suitable for release notes. Focus on user-facing impact rather than technical details."
+}
+```
+
+### Custom instructions (from file)
+
+Use a file to share commit message conventions across your team:
+
+```json
+{
+    "claude-commit.instructionsFilePath": ".vscode/copilot/commit-message-instructions.md"
+}
+```
+
+Then create `.vscode/copilot/commit-message-instructions.md`:
+
+```markdown
+# Commit Message Instructions
+
+- Summarize changes into a sentence for release notes
+- Focus on the "why" rather than the "what"
+- Use imperative mood (e.g., "Add feature" not "Added feature")
+- Maximum 50 characters for the subject line
+- Include ticket number if applicable: [TICKET-123] Subject
+```
+
+The file path can be relative (from workspace root) or absolute. If both file and inline instructions are provided, the file takes precedence.
 
 ## Troubleshooting
 
@@ -96,6 +134,7 @@ If the extension can't find Claude CLI:
    - **Authentication**: Ensure Claude CLI is authenticated by running `claude setup-token` in terminal
 
 ### No commit message generated
+
 1. Ensure you have changes in your repository
 2. Check that Claude CLI is properly authenticated
 3. Enable debug mode to see the actual commands being executed
