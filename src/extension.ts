@@ -90,57 +90,61 @@ class ClaudeCLIExecutor {
             }
         }
         
-        // Try using bash shell
-        if (this.debugMode) {
-            outputChannel.appendLine('\n[BASH SHELL] Trying bash -l -c "which claude"...');
-        }
-        try {
-            const bashCmd = '/bin/bash -l -c "which claude"';
+        // Try using bash shell (skip on Windows)
+        if (process.platform !== 'win32') {
             if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] Command: ${bashCmd}`);
+                outputChannel.appendLine('\n[BASH SHELL] Trying bash -l -c "which claude"...');
             }
-            
-            const { stdout, stderr } = await execAsync(bashCmd);
-            if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] stdout: ${stdout}`);
-                outputChannel.appendLine(`[BASH SHELL] stderr: ${stderr || 'none'}`);
-            }
-            
-            this.claudePath = stdout.trim();
-            if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] ✓ Found at: ${this.claudePath}`);
-            }
-            return this.claudePath;
-        } catch (error: any) {
-            if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] Failed: ${error.message}`);
+            try {
+                const bashCmd = '/bin/bash -l -c "which claude"';
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] Command: ${bashCmd}`);
+                }
+
+                const { stdout, stderr } = await execAsync(bashCmd);
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] stdout: ${stdout}`);
+                    outputChannel.appendLine(`[BASH SHELL] stderr: ${stderr || 'none'}`);
+                }
+
+                this.claudePath = stdout.trim();
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] ✓ Found at: ${this.claudePath}`);
+                }
+                return this.claudePath;
+            } catch (error: any) {
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] Failed: ${error.message}`);
+                }
             }
         }
         
-        // Try zsh shell
-        if (this.debugMode) {
-            outputChannel.appendLine('\n[ZSH SHELL] Trying zsh -l -c "which claude"...');
-        }
-        try {
-            const zshCmd = '/bin/zsh -l -c "which claude"';
+        // Try zsh shell (skip on Windows)
+        if (process.platform !== 'win32') {
             if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] Command: ${zshCmd}`);
+                outputChannel.appendLine('\n[ZSH SHELL] Trying zsh -l -c "which claude"...');
             }
-            
-            const { stdout, stderr } = await execAsync(zshCmd);
-            if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] stdout: ${stdout}`);
-                outputChannel.appendLine(`[ZSH SHELL] stderr: ${stderr || 'none'}`);
-            }
-            
-            this.claudePath = stdout.trim();
-            if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] ✓ Found at: ${this.claudePath}`);
-            }
-            return this.claudePath;
-        } catch (error: any) {
-            if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] Failed: ${error.message}`);
+            try {
+                const zshCmd = '/bin/zsh -l -c "which claude"';
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] Command: ${zshCmd}`);
+                }
+
+                const { stdout, stderr } = await execAsync(zshCmd);
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] stdout: ${stdout}`);
+                    outputChannel.appendLine(`[ZSH SHELL] stderr: ${stderr || 'none'}`);
+                }
+
+                this.claudePath = stdout.trim();
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] ✓ Found at: ${this.claudePath}`);
+                }
+                return this.claudePath;
+            } catch (error: any) {
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] Failed: ${error.message}`);
+                }
             }
         }
         
@@ -279,12 +283,22 @@ class ClaudeCLIExecutor {
             outputChannel.appendLine(`[EXECUTE] Using path: ${this.claudePath}`);
         }
 
+        // Detect platform
+        const isWindows = process.platform === 'win32';
+
         // Use base64 encoding to completely avoid shell escaping issues
         const base64Prompt = Buffer.from(prompt, 'utf8').toString('base64');
-        
+
         // Build command that decodes base64 and pipes to claude
-        let command = `echo "${base64Prompt}" | base64 -d | ${this.claudePath}`;
-        
+        let command;
+        if (isWindows) {
+            // PowerShell command for Windows
+            command = `[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64Prompt}')) | ${this.claudePath}`;
+        } else {
+            // Bash command for Linux/macOS
+            command = `echo "${base64Prompt}" | base64 -d | ${this.claudePath}`;
+        }
+
         // Add all flags
         command += ' --print';  // Use explicit --print flag
         command += ' --model sonnet';  // Hardcoded model
@@ -304,11 +318,11 @@ class ClaudeCLIExecutor {
             
             const execOptions = {
                 timeout: 60000,  // 60 seconds timeout
-                shell: '/bin/bash',
+                shell: isWindows ? 'powershell.exe' : '/bin/bash',
                 maxBuffer: 1024 * 1024 * 10, // 10MB buffer for large outputs
-                env: { 
-                    ...process.env, 
-                    PATH: `/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH}:${process.env.HOME}/.nvm/versions/node/*/bin` 
+                env: {
+                    ...process.env,
+                    PATH: isWindows ? process.env.PATH : `/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH}:${process.env.HOME}/.nvm/versions/node/*/bin`
                 }
             };
             
