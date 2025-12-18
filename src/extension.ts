@@ -93,57 +93,61 @@ class ClaudeCLIExecutor {
             }
         }
         
-        // Try using bash shell
-        if (this.debugMode) {
-            outputChannel.appendLine('\n[BASH SHELL] Trying bash -l -c "which claude"...');
-        }
-        try {
-            const bashCmd = '/bin/bash -l -c "which claude"';
+        // Try using bash shell (skip on Windows)
+        if (process.platform !== 'win32') {
             if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] Command: ${bashCmd}`);
+                outputChannel.appendLine('\n[BASH SHELL] Trying bash -l -c "which claude"...');
             }
-            
-            const { stdout, stderr } = await execAsync(bashCmd);
-            if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] stdout: ${stdout}`);
-                outputChannel.appendLine(`[BASH SHELL] stderr: ${stderr || 'none'}`);
-            }
-            
-            this.claudePath = stdout.trim();
-            if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] ✓ Found at: ${this.claudePath}`);
-            }
-            return this.claudePath;
-        } catch (error: any) {
-            if (this.debugMode) {
-                outputChannel.appendLine(`[BASH SHELL] Failed: ${error.message}`);
+            try {
+                const bashCmd = '/bin/bash -l -c "which claude"';
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] Command: ${bashCmd}`);
+                }
+
+                const { stdout, stderr } = await execAsync(bashCmd);
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] stdout: ${stdout}`);
+                    outputChannel.appendLine(`[BASH SHELL] stderr: ${stderr || 'none'}`);
+                }
+
+                this.claudePath = stdout.trim();
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] ✓ Found at: ${this.claudePath}`);
+                }
+                return this.claudePath;
+            } catch (error: any) {
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[BASH SHELL] Failed: ${error.message}`);
+                }
             }
         }
         
-        // Try zsh shell
-        if (this.debugMode) {
-            outputChannel.appendLine('\n[ZSH SHELL] Trying zsh -l -c "which claude"...');
-        }
-        try {
-            const zshCmd = '/bin/zsh -l -c "which claude"';
+        // Try zsh shell (skip on Windows)
+        if (process.platform !== 'win32') {
             if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] Command: ${zshCmd}`);
+                outputChannel.appendLine('\n[ZSH SHELL] Trying zsh -l -c "which claude"...');
             }
-            
-            const { stdout, stderr } = await execAsync(zshCmd);
-            if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] stdout: ${stdout}`);
-                outputChannel.appendLine(`[ZSH SHELL] stderr: ${stderr || 'none'}`);
-            }
-            
-            this.claudePath = stdout.trim();
-            if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] ✓ Found at: ${this.claudePath}`);
-            }
-            return this.claudePath;
-        } catch (error: any) {
-            if (this.debugMode) {
-                outputChannel.appendLine(`[ZSH SHELL] Failed: ${error.message}`);
+            try {
+                const zshCmd = '/bin/zsh -l -c "which claude"';
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] Command: ${zshCmd}`);
+                }
+
+                const { stdout, stderr } = await execAsync(zshCmd);
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] stdout: ${stdout}`);
+                    outputChannel.appendLine(`[ZSH SHELL] stderr: ${stderr || 'none'}`);
+                }
+
+                this.claudePath = stdout.trim();
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] ✓ Found at: ${this.claudePath}`);
+                }
+                return this.claudePath;
+            } catch (error: any) {
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[ZSH SHELL] Failed: ${error.message}`);
+                }
             }
         }
         
@@ -282,6 +286,9 @@ class ClaudeCLIExecutor {
             outputChannel.appendLine(`[EXECUTE] Using path: ${this.claudePath}`);
         }
 
+        // Detect platform
+        const isWindows = process.platform === 'win32';
+
         // For large prompts, use a temp file to avoid command-line length limits
         // This affects all platforms when diffs are very large
         let command;
@@ -298,7 +305,13 @@ class ClaudeCLIExecutor {
             fs.writeFileSync(tempFile, prompt, 'utf8');
 
             // Read from temp file and pipe to claude
-            command = `cat '${tempFile}' | ${this.claudePath}`;
+            if (isWindows) {
+                // PowerShell command for Windows
+                command = `Get-Content '${tempFile}' -Raw | ${this.claudePath}`;
+            } else {
+                // Bash command for Linux/macOS
+                command = `cat '${tempFile}' | ${this.claudePath}`;
+            }
 
             if (this.debugMode) {
                 outputChannel.appendLine(`[EXECUTE] Temp file: ${tempFile}`);
@@ -306,7 +319,14 @@ class ClaudeCLIExecutor {
         } else {
             // For shorter prompts, use base64 encoding inline
             const base64Prompt = Buffer.from(prompt, 'utf8').toString('base64');
-            command = `echo "${base64Prompt}" | base64 -d | ${this.claudePath}`;
+
+            if (isWindows) {
+                // PowerShell command for Windows
+                command = `[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64Prompt}')) | ${this.claudePath}`;
+            } else {
+                // Bash command for Linux/macOS
+                command = `echo "${base64Prompt}" | base64 -d | ${this.claudePath}`;
+            }
 
             if (this.debugMode) {
                 outputChannel.appendLine(`[EXECUTE] Using inline base64 (${base64Prompt.length} chars)`);
@@ -331,11 +351,11 @@ class ClaudeCLIExecutor {
             
             const execOptions = {
                 timeout: 60000,  // 60 seconds timeout
-                shell: '/bin/bash',
+                shell: isWindows ? 'powershell.exe' : '/bin/bash',
                 maxBuffer: 1024 * 1024 * 10, // 10MB buffer for large outputs
-                env: { 
-                    ...process.env, 
-                    PATH: `/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH}:${process.env.HOME}/.nvm/versions/node/*/bin` 
+                env: {
+                    ...process.env,
+                    PATH: isWindows ? process.env.PATH : `/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${process.env.PATH}:${process.env.HOME}/.nvm/versions/node/*/bin`
                 }
             };
             
@@ -599,14 +619,67 @@ class CommitMessageGenerator {
     constructor() {
         this.config = vscode.workspace.getConfiguration('claude-commit');
         this.debugMode = this.config.get<boolean>('debugMode') || false;
-        
+
         if (this.debugMode) {
             outputChannel.appendLine('\n=== CONFIGURATION ===');
             outputChannel.appendLine(`claudePath: ${this.config.get<string>('claudePath') || 'not set'}`);
             outputChannel.appendLine(`debugMode: ${this.debugMode}`);
+            outputChannel.appendLine(`customInstructions: ${this.config.get<string>('customInstructions') || 'not set'}`);
+            outputChannel.appendLine(`instructionsFilePath: ${this.config.get<string>('instructionsFilePath') || 'not set'}`);
         }
-        
+
         this.cliExecutor = new ClaudeCLIExecutor(this.debugMode);
+    }
+
+    private async loadCustomInstructions(workspacePath: string): Promise<string> {
+        if (this.debugMode) {
+            outputChannel.appendLine('\n[INSTRUCTIONS] Loading custom instructions...');
+        }
+
+        let customInstructions = '';
+
+        // First, try to load from file
+        const instructionsFilePath = this.config.get<string>('instructionsFilePath');
+        if (instructionsFilePath && instructionsFilePath.trim() !== '') {
+            try {
+                // Resolve relative paths from workspace root
+                const resolvedPath = path.isAbsolute(instructionsFilePath)
+                    ? instructionsFilePath
+                    : path.join(workspacePath, instructionsFilePath);
+
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[INSTRUCTIONS] Reading from file: ${resolvedPath}`);
+                }
+
+                if (fs.existsSync(resolvedPath)) {
+                    customInstructions = fs.readFileSync(resolvedPath, 'utf8').trim();
+                    if (this.debugMode) {
+                        outputChannel.appendLine(`[INSTRUCTIONS] Loaded ${customInstructions.length} chars from file`);
+                    }
+                } else {
+                    if (this.debugMode) {
+                        outputChannel.appendLine(`[INSTRUCTIONS] File not found: ${resolvedPath}`);
+                    }
+                }
+            } catch (error: any) {
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[INSTRUCTIONS] Error reading file: ${error.message}`);
+                }
+            }
+        }
+
+        // If no file instructions, use inline custom instructions
+        if (!customInstructions) {
+            const inlineInstructions = this.config.get<string>('customInstructions');
+            if (inlineInstructions && inlineInstructions.trim() !== '') {
+                customInstructions = inlineInstructions.trim();
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[INSTRUCTIONS] Using inline instructions: ${customInstructions.length} chars`);
+                }
+            }
+        }
+
+        return customInstructions;
     }
 
     async generateCommitMessage(repositoryPath?: string): Promise<string> {
@@ -678,9 +751,28 @@ class CommitMessageGenerator {
             if (this.debugMode) {
                 outputChannel.appendLine(`\n[PROMPT] Creating prompt for ${fileType}...`);
             }
-            
-            // Build prompt with hardcoded conventional format
-            const prompt = `Generate a git commit message for the following changes. 
+
+            // Load custom instructions
+            const customInstructions = await this.loadCustomInstructions(cwd || '');
+
+            // Build prompt with default rules
+            let rulesSection = `Rules:
+- Use conventional commit format
+- Keep under 72 characters for the first line
+- Be specific and clear
+- Common types: feat, fix, docs, style, refactor, test, chore`;
+
+            // If custom instructions exist, use them instead
+            if (customInstructions) {
+                rulesSection = `Custom Instructions:
+${customInstructions}`;
+
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[PROMPT] Using custom instructions (${customInstructions.length} chars)`);
+                }
+            }
+
+            const prompt = `Generate a git commit message for the following changes.
 
 IMPORTANT: Return ONLY the commit message text itself. Do not include:
 - Any explanatory text like "Based on...", "Here's...", or "Here is..."
@@ -693,11 +785,7 @@ Just return the raw commit message text that will be used directly in git commit
 Git diff:
 ${diff}
 
-Rules:
-- Use conventional commit format
-- Keep under 72 characters for the first line
-- Be specific and clear
-- Common types: feat, fix, docs, style, refactor, test, chore
+${rulesSection}
 
 Remember: Return ONLY the commit message text, nothing else.`;
 
