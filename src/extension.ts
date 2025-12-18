@@ -5,6 +5,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as os from 'os';
 
 const execAsync = promisify(exec);
 
@@ -288,17 +289,48 @@ class ClaudeCLIExecutor {
         // Detect platform
         const isWindows = process.platform === 'win32';
 
-        // Use base64 encoding to completely avoid shell escaping issues
-        const base64Prompt = Buffer.from(prompt, 'utf8').toString('base64');
-
-        // Build command that decodes base64 and pipes to claude
+        // For large prompts, use a temp file to avoid command-line length limits
+        // This affects all platforms when diffs are very large
         let command;
-        if (isWindows) {
-            // PowerShell command for Windows
-            command = `[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64Prompt}')) | ${this.claudePath}`;
+        let tempFile: string | null = null;
+        const maxInlineLength = 100000; // Conservative limit for command-line arguments
+
+        if (prompt.length > maxInlineLength) {
+            if (this.debugMode) {
+                outputChannel.appendLine(`[EXECUTE] Prompt too long (${prompt.length} chars), using temp file`);
+            }
+
+            // Create temp file with the prompt
+            tempFile = path.join(os.tmpdir(), `claude-prompt-${Date.now()}.txt`);
+            fs.writeFileSync(tempFile, prompt, 'utf8');
+
+            // Read from temp file and pipe to claude
+            if (isWindows) {
+                // PowerShell command for Windows
+                command = `Get-Content '${tempFile}' -Raw | ${this.claudePath}`;
+            } else {
+                // Bash command for Linux/macOS
+                command = `cat '${tempFile}' | ${this.claudePath}`;
+            }
+
+            if (this.debugMode) {
+                outputChannel.appendLine(`[EXECUTE] Temp file: ${tempFile}`);
+            }
         } else {
-            // Bash command for Linux/macOS
-            command = `echo "${base64Prompt}" | base64 -d | ${this.claudePath}`;
+            // For shorter prompts, use base64 encoding inline
+            const base64Prompt = Buffer.from(prompt, 'utf8').toString('base64');
+
+            if (isWindows) {
+                // PowerShell command for Windows
+                command = `[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${base64Prompt}')) | ${this.claudePath}`;
+            } else {
+                // Bash command for Linux/macOS
+                command = `echo "${base64Prompt}" | base64 -d | ${this.claudePath}`;
+            }
+
+            if (this.debugMode) {
+                outputChannel.appendLine(`[EXECUTE] Using inline base64 (${base64Prompt.length} chars)`);
+            }
         }
 
         // Add all flags
@@ -308,8 +340,7 @@ class ClaudeCLIExecutor {
         command += ' --dangerously-skip-permissions';  // Skip permissions check
 
         if (this.debugMode) {
-            outputChannel.appendLine(`\n[EXECUTE] Command structure: echo [base64] | base64 -d | claude [options]`);
-            outputChannel.appendLine(`[EXECUTE] Base64 length: ${base64Prompt.length} chars`);
+            outputChannel.appendLine(`\n[EXECUTE] Command structure: ${tempFile ? 'temp file' : 'inline base64'} | claude [options]`);
             outputChannel.appendLine(`[EXECUTE] Original prompt length: ${prompt.length} chars`);
         }
         
@@ -397,11 +428,25 @@ class ClaudeCLIExecutor {
                 outputChannel.appendLine(`[EXECUTE] Error code: ${error.code}`);
                 outputChannel.appendLine(`[EXECUTE] Error stack: ${error.stack}`);
             }
-            
+
             if (error.code === 'ETIMEDOUT') {
                 throw new Error('Claude CLI timed out after 60 seconds. Please check if Claude is authenticated.');
             }
             throw new Error(`Claude CLI execution failed: ${error.message}`);
+        } finally {
+            // Clean up temp file if it was created
+            if (tempFile) {
+                try {
+                    fs.unlinkSync(tempFile);
+                    if (this.debugMode) {
+                        outputChannel.appendLine(`[EXECUTE] Cleaned up temp file: ${tempFile}`);
+                    }
+                } catch (cleanupError: any) {
+                    if (this.debugMode) {
+                        outputChannel.appendLine(`[EXECUTE] Warning: Failed to clean up temp file: ${cleanupError.message}`);
+                    }
+                }
+            }
         }
     }
 
