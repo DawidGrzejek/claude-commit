@@ -74,6 +74,16 @@
           "type": "boolean",
           "default": false,
           "description": "Enable debug mode to show CLI commands being executed"
+        },
+        "claude-commit.customInstructions": {
+          "type": "string",
+          "default": "",
+          "description": "Custom instructions for commit message generation (e.g., 'Summarize changes into a sentence for release notes')"
+        },
+        "claude-commit.instructionsFilePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a file containing custom commit message instructions (e.g., '.vscode/copilot/commit-message-instructions.md')"
         }
       }
     }
