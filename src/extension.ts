@@ -3,6 +3,8 @@
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const execAsync = promisify(exec);
 
@@ -558,14 +560,67 @@ class CommitMessageGenerator {
     constructor() {
         this.config = vscode.workspace.getConfiguration('claude-commit');
         this.debugMode = this.config.get<boolean>('debugMode') || false;
-        
+
         if (this.debugMode) {
             outputChannel.appendLine('\n=== CONFIGURATION ===');
             outputChannel.appendLine(`claudePath: ${this.config.get<string>('claudePath') || 'not set'}`);
             outputChannel.appendLine(`debugMode: ${this.debugMode}`);
+            outputChannel.appendLine(`customInstructions: ${this.config.get<string>('customInstructions') || 'not set'}`);
+            outputChannel.appendLine(`instructionsFilePath: ${this.config.get<string>('instructionsFilePath') || 'not set'}`);
         }
-        
+
         this.cliExecutor = new ClaudeCLIExecutor(this.debugMode);
+    }
+
+    private async loadCustomInstructions(workspacePath: string): Promise<string> {
+        if (this.debugMode) {
+            outputChannel.appendLine('\n[INSTRUCTIONS] Loading custom instructions...');
+        }
+
+        let customInstructions = '';
+
+        // First, try to load from file
+        const instructionsFilePath = this.config.get<string>('instructionsFilePath');
+        if (instructionsFilePath && instructionsFilePath.trim() !== '') {
+            try {
+                // Resolve relative paths from workspace root
+                const resolvedPath = path.isAbsolute(instructionsFilePath)
+                    ? instructionsFilePath
+                    : path.join(workspacePath, instructionsFilePath);
+
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[INSTRUCTIONS] Reading from file: ${resolvedPath}`);
+                }
+
+                if (fs.existsSync(resolvedPath)) {
+                    customInstructions = fs.readFileSync(resolvedPath, 'utf8').trim();
+                    if (this.debugMode) {
+                        outputChannel.appendLine(`[INSTRUCTIONS] Loaded ${customInstructions.length} chars from file`);
+                    }
+                } else {
+                    if (this.debugMode) {
+                        outputChannel.appendLine(`[INSTRUCTIONS] File not found: ${resolvedPath}`);
+                    }
+                }
+            } catch (error: any) {
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[INSTRUCTIONS] Error reading file: ${error.message}`);
+                }
+            }
+        }
+
+        // If no file instructions, use inline custom instructions
+        if (!customInstructions) {
+            const inlineInstructions = this.config.get<string>('customInstructions');
+            if (inlineInstructions && inlineInstructions.trim() !== '') {
+                customInstructions = inlineInstructions.trim();
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[INSTRUCTIONS] Using inline instructions: ${customInstructions.length} chars`);
+                }
+            }
+        }
+
+        return customInstructions;
     }
 
     async generateCommitMessage(repositoryPath?: string): Promise<string> {
@@ -637,9 +692,28 @@ class CommitMessageGenerator {
             if (this.debugMode) {
                 outputChannel.appendLine(`\n[PROMPT] Creating prompt for ${fileType}...`);
             }
-            
-            // Build prompt with hardcoded conventional format
-            const prompt = `Generate a git commit message for the following changes. 
+
+            // Load custom instructions
+            const customInstructions = await this.loadCustomInstructions(cwd || '');
+
+            // Build prompt with default rules
+            let rulesSection = `Rules:
+- Use conventional commit format
+- Keep under 72 characters for the first line
+- Be specific and clear
+- Common types: feat, fix, docs, style, refactor, test, chore`;
+
+            // If custom instructions exist, use them instead
+            if (customInstructions) {
+                rulesSection = `Custom Instructions:
+${customInstructions}`;
+
+                if (this.debugMode) {
+                    outputChannel.appendLine(`[PROMPT] Using custom instructions (${customInstructions.length} chars)`);
+                }
+            }
+
+            const prompt = `Generate a git commit message for the following changes.
 
 IMPORTANT: Return ONLY the commit message text itself. Do not include:
 - Any explanatory text like "Based on...", "Here's...", or "Here is..."
@@ -652,11 +726,7 @@ Just return the raw commit message text that will be used directly in git commit
 Git diff:
 ${diff}
 
-Rules:
-- Use conventional commit format
-- Keep under 72 characters for the first line
-- Be specific and clear
-- Common types: feat, fix, docs, style, refactor, test, chore
+${rulesSection}
 
 Remember: Return ONLY the commit message text, nothing else.`;
 
